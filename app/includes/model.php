@@ -16,53 +16,65 @@ class Model {
 
     public function userSignIn($pEmail, $pPassword, $pHashingAlgorithm) {
         try {
-            $sql = 'SELECT * FROM ' . $this->prefix . 'users WHERE email = \'' . $pEmail . '\' AND password = \'' . hash($pHashingAlgorithm, $pPassword) . '\';';
-            return $this->db->query($sql)->fetchAll();
-        }
-        catch(Exception $ex) {
+            $sql = 'SELECT * FROM ' . $this->prefix . 'users WHERE email = :email AND password = :password';
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([
+                ':email' => $pEmail,
+                ':password' => hash($pHashingAlgorithm, $pPassword)
+            ]);
+            return $stmt->fetchAll();
+        } catch (Exception $ex) {
             error(500, 'Query could not be executed', $ex);
         }
     }
 
     public function isUserEmailInUse($pEmail) {
         try {
-            $sql = 'SELECT * FROM ' . $this->prefix . 'users WHERE email = \'' . $pEmail . '\'';
-            $result = $this->db->query($sql)->fetchAll();
+            $sql = 'SELECT * FROM ' . $this->prefix . 'users WHERE email = :email';
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([':email' => $pEmail]);
+            $result = $stmt->fetchAll();
             return (false !== $result && 0 < count($result));
-        }
-        catch(Exception $ex) {
+        } catch (Exception $ex) {
             error(500, 'Query could not be executed', $ex);
         }
     }
 
     public function isUsernameInUse($pUsername) {
         try {
-            $sql = 'SELECT * FROM ' . $this->prefix . 'users WHERE username = \'' . $pUsername . '\'';
-            $result = $this->db->query($sql)->fetchAll();
+            $sql = 'SELECT * FROM ' . $this->prefix . 'users WHERE username = :username';
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([':username' => $pUsername]);
+            $result = $stmt->fetchAll();
             return (false !== $result && 0 < count($result));
-        }
-        catch(Exception $ex) {
+        } catch (Exception $ex) {
             error(500, 'Query could not be executed', $ex);
         }
     }
 
     public function createUser($pUsername, $pPassword, $pEmail, $pCountry, $pHashingAlgorithm) {
         try {
-            $sql = 'INSERT INTO ' . $this->prefix . 'users (username, password, email, country, is_admin) VALUES (\'' . $pUsername . '\', \'' . hash($pHashingAlgorithm, $pPassword) . '\', \'' . $pEmail . '\', \'' . $pCountry . '\', 0)';
-            $result = $this->db->exec($sql);
-            return ($result !== 0);
-        }
-        catch(Exception $ex) {
+            $sql = 'INSERT INTO ' . $this->prefix . 'users (username, password, email, country, is_admin) VALUES (:username, :password, :email, :country, 0)';
+            $stmt = $this->db->prepare($sql);
+            $result = $stmt->execute([
+                ':username' => $pUsername,
+                ':password' => hash($pHashingAlgorithm, $pPassword),
+                ':email' => $pEmail,
+                ':country' => $pCountry
+            ]);
+            return ($result !== false);
+        } catch (Exception $ex) {
             error(500, 'Query could not be executed', $ex);
         }
     }
 
     public function getUserData($pUserId) {
         try {
-            $sql = 'SELECT * FROM ' . $this->prefix . 'users WHERE id = ' . $pUserId;
-            return $this->db->query($sql)->fetchAll();
-        }
-        catch(Exception $ex) {
+            $sql = 'SELECT * FROM ' . $this->prefix . 'users WHERE id = :id';
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([':id' => $pUserId]);
+            return $stmt->fetchAll();
+        } catch (Exception $ex) {
             error(500, 'Query could not be executed', $ex);
         }
     }
@@ -71,21 +83,28 @@ class Model {
         try {
             // change password?
             $passwordSql = '';
-            if(null !== $pChangePassword) {
-                $passwordSql = ', password = \'' . $pChangePassword . '\'';
+            $params = [
+                ':email' => $pEmail,
+                ':country' => $pCountry,
+                ':id' => $pUserId
+            ];
+            if (null !== $pChangePassword) {
+                $passwordSql = ', password = :password';
+                $params[':password'] = $pChangePassword;
             }
 
             // change admin status?
             $adminSql = '';
-            if(null !== $pChangeAdmin) {
-                $adminSql = ', is_admin = ' . $pChangeAdmin;
+            if (null !== $pChangeAdmin) {
+                $adminSql = ', is_admin = :is_admin';
+                $params[':is_admin'] = $pChangeAdmin;
             }
 
-            $sql = 'UPDATE ' . $this->prefix . 'users SET email = \'' . $pEmail . '\', country = \'' . $pCountry . '\'' . $passwordSql . $adminSql . ' WHERE id = ' . $pUserId;
-            $result = $this->db->exec($sql);
-            return ($result !== 0);
-        }
-        catch(Exception $ex) {
+            $sql = 'UPDATE ' . $this->prefix . 'users SET email = :email, country = :country' . $passwordSql . $adminSql . ' WHERE id = :id';
+            $stmt = $this->db->prepare($sql);
+            $result = $stmt->execute($params);
+            return ($result !== false);
+        } catch (Exception $ex) {
             error(500, 'Query could not be executed', $ex);
         }
     }
@@ -93,9 +112,9 @@ class Model {
     public function getAllUsers() {
         try {
             $sql = 'SELECT id, username, email, country, is_admin FROM ' . $this->prefix . 'users';
-            return $this->db->query($sql)->fetchAll();
-        }
-        catch(Exception $ex) {
+            $stmt = $this->db->query($sql);
+            return $stmt->fetchAll();
+        } catch (Exception $ex) {
             error(500, 'Query could not be executed', $ex);
         }
     }
@@ -103,20 +122,20 @@ class Model {
     public function getAllAdmins() {
         try {
             $sql = 'SELECT id, username, email, country, is_admin FROM ' . $this->prefix . 'users WHERE is_admin = 1';
-            return $this->db->query($sql)->fetchAll();
-        }
-        catch(Exception $ex) {
+            $stmt = $this->db->query($sql);
+            return $stmt->fetchAll();
+        } catch (Exception $ex) {
             error(500, 'Query could not be executed', $ex);
         }
     }
 
     public function removeUser($pUserId) {
         try {
-            $sql = 'DELETE FROM ' . $this->prefix . 'users WHERE id = ' . $pUserId;
-            $result = $this->db->exec($sql);
-            return ($result !== 0);
-        }
-        catch(Exception $ex) {
+            $sql = 'DELETE FROM ' . $this->prefix . 'users WHERE id = :id';
+            $stmt = $this->db->prepare($sql);
+            $result = $stmt->execute([':id' => $pUserId]);
+            return ($result !== false);
+        } catch (Exception $ex) {
             error(500, 'Query could not be executed', $ex);
         }
     }
@@ -127,43 +146,53 @@ class Model {
 
     public function getDownloads($pApproved) {
         try {
-            $sql = 'SELECT * FROM ' . $this->prefix . 'downloads WHERE approved = ' . ($pApproved ? 1 : 0);
-            return $this->db->query($sql)->fetchAll();
-        }
-        catch(Exception $ex) {
+            $sql = 'SELECT * FROM ' . $this->prefix . 'downloads WHERE approved = :approved';
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([':approved' => $pApproved ? 1 : 0]);
+            return $stmt->fetchAll();
+        } catch (Exception $ex) {
             error(500, 'Query could not be executed', $ex);
         }
     }
 
     public function createDownload($pAllowGuests, $pApproved, $pTitle, $pDescription, $pFile) {
         try {
-            $sql = 'INSERT INTO ' . $this->prefix . 'downloads (allow_guests, approved, title, description, file) VALUES (' . ($pAllowGuests ? 1 : 0) . ', ' . ($pApproved ? 1 : 0) . ', \'' . $pTitle . '\', \'' . $pDescription . '\', \'' . $pFile . '\')';
-            $result = $this->db->exec($sql);
-            return ($result !== 0);
-        }
-        catch(Exception $ex) {
+            $sql = 'INSERT INTO ' . $this->prefix . 'downloads (allow_guests, approved, title, description, file) VALUES (:allow_guests, :approved, :title, :description, :file)';
+            $stmt = $this->db->prepare($sql);
+            $result = $stmt->execute([
+                ':allow_guests' => $pAllowGuests ? 1 : 0,
+                ':approved' => $pApproved ? 1 : 0,
+                ':title' => $pTitle,
+                ':description' => $pDescription,
+                ':file' => $pFile
+            ]);
+            return ($result !== false);
+        } catch (Exception $ex) {
             error(500, 'Query could not be executed', $ex);
         }
     }
 
     public function approveDownload($pId, $pAllowGuests) {
         try {
-            $sql = 'UPDATE ' . $this->prefix . 'downloads SET approved = 1, allow_guests = ' . ($pAllowGuests ? 1 : 0) . ' WHERE id = ' . $pId;
-            $result = $this->db->exec($sql);
-            return ($result !== 0);
-        }
-        catch(Exception $ex) {
+            $sql = 'UPDATE ' . $this->prefix . 'downloads SET approved = 1, allow_guests = :allow_guests WHERE id = :id';
+            $stmt = $this->db->prepare($sql);
+            $result = $stmt->execute([
+                ':allow_guests' => $pAllowGuests ? 1 : 0,
+                ':id' => $pId
+            ]);
+            return ($result !== false);
+        } catch (Exception $ex) {
             error(500, 'Query could not be executed', $ex);
         }
     }
 
     public function removeDownload($pId) {
         try {
-            $sql = 'DELETE FROM ' . $this->prefix . 'downloads WHERE id = ' . $pId;
-            $result = $this->db->exec($sql);
-            return ($result !== 0);
-        }
-        catch(Exception $ex) {
+            $sql = 'DELETE FROM ' . $this->prefix . 'downloads WHERE id = :id';
+            $stmt = $this->db->prepare($sql);
+            $result = $stmt->execute([':id' => $pId]);
+            return ($result !== false);
+        } catch (Exception $ex) {
             error(500, 'Query could not be executed', $ex);
         }
 
@@ -191,9 +220,9 @@ class Model {
                   t.id
                 ORDER BY
                   last_post DESC;';
-            return $this->db->query($sql)->fetchAll();
-        }
-        catch(Exception $ex) {
+            $stmt = $this->db->query($sql);
+            return $stmt->fetchAll();
+        } catch (Exception $ex) {
             error(500, 'Query could not be executed', $ex);
         }
     }
@@ -211,13 +240,14 @@ class Model {
                   ' . $this->prefix . 'threads t,
                   ' . $this->prefix . 'posts p
                 WHERE
-                  t.id = ' . $pThreadId . ' AND
+                  t.id = :thread_id AND
                   p.thread_id = t.id
                 GROUP BY
                   t.id';
-            return $this->db->query($sql)->fetchAll();
-        }
-        catch(Exception $ex) {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([':thread_id' => $pThreadId]);
+            return $stmt->fetchAll();
+        } catch (Exception $ex) {
             error(500, 'Query could not be executed', $ex);
         }
     }
@@ -232,38 +262,46 @@ class Model {
                   ' . $this->prefix . 'posts p,
                   ' . $this->prefix . 'users u
                 WHERE
-                    p.thread_id = ' . $pThreadId . ' AND
+                    p.thread_id = :thread_id AND
                     p.user_id = u.id
                 ORDER BY
                     p.id ASC';
-            return $this->db->query($sql)->fetchAll();
-        }
-        catch(Exception $ex) {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([':thread_id' => $pThreadId]);
+            return $stmt->fetchAll();
+        } catch (Exception $ex) {
             error(500, 'Query could not be executed', $ex);
         }
     }
 
     function createThread($pTitle, $pAdminsOnly) {
         try {
-            $sql = 'INSERT INTO ' . $this->prefix . 'threads (title, admins_only) VALUES (\'' . $pTitle .'\', ' . ($pAdminsOnly ? 1 : 0) . ')';
-            $result = $this->db->exec($sql);
-            if($result) {
+            $sql = 'INSERT INTO ' . $this->prefix . 'threads (title, admins_only) VALUES (:title, :admins_only)';
+            $stmt = $this->db->prepare($sql);
+            $result = $stmt->execute([
+                ':title' => $pTitle,
+                ':admins_only' => $pAdminsOnly ? 1 : 0
+            ]);
+            if ($result) {
                 return $this->db->lastInsertId();
             }
             return false;
-        }
-        catch(Exception $ex) {
+        } catch (Exception $ex) {
             error(500, 'Query could not be executed', $ex);
         }
     }
 
     function createPost($pThreadId, $pUserId, $pText) {
         try {
-            $sql = 'INSERT INTO ' . $this->prefix . 'posts (thread_id, user_id, text) VALUES (' . $pThreadId . ', ' . $pUserId . ', \'' . $pText . '\')';
-            $result = $this->db->exec($sql);
-            return ($result !== 0);
-        }
-        catch(Exception $ex) {
+            $sql = 'INSERT INTO ' . $this->prefix . 'posts (thread_id, user_id, text) VALUES (:thread_id, :user_id, :text)';
+            $stmt = $this->db->prepare($sql);
+            $result = $stmt->execute([
+                ':thread_id' => $pThreadId,
+                ':user_id' => $pUserId,
+                ':text' => $pText
+            ]);
+            return ($result !== false);
+        } catch (Exception $ex) {
             error(500, 'Query could not be executed', $ex);
         }
     }
@@ -276,21 +314,25 @@ class Model {
                 FROM
                   ' . $this->prefix . 'posts
                 WHERE
-                  id = ' . $pPostId . ';';
-            return $this->db->query($sql)->fetchAll();
-        }
-        catch(Exception $ex) {
+                  id = :post_id';
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([':post_id' => $pPostId]);
+            return $stmt->fetchAll();
+        } catch (Exception $ex) {
             error(500, 'Query could not be executed', $ex);
         }
     }
 
     function editPost($pPostId, $pPost) {
         try {
-            $sql = 'UPDATE ' . $this->prefix . 'posts SET text = \'' . $_POST['post'] . '\' WHERE id = ' . $_GET['id'];
-            $result = $this->db->exec($sql);
-            return ($result !== 0);
-        }
-        catch(Exception $ex) {
+            $sql = 'UPDATE ' . $this->prefix . 'posts SET text = :text WHERE id = :id';
+            $stmt = $this->db->prepare($sql);
+            $result = $stmt->execute([
+                ':text' => $pPost,
+                ':id' => $pPostId
+            ]);
+            return ($result !== false);
+        } catch (Exception $ex) {
             error(500, 'Query could not be executed', $ex);
         }
     }
@@ -299,23 +341,24 @@ class Model {
         try {
             $sql = '
                 SELECT
-                  ' . $this->prefix . 'threads.id AS thread_id,
-                  ' . $this->prefix . 'threads.title AS thread_title,
-                  ' . $this->prefix . 'threads.admins_only AS thread_admins_only,
-                  ' . $this->prefix . 'posts.id AS post_id,
-                  ' . $this->prefix . 'posts.timestamp AS post_timestamp,
-                  ' . $this->prefix . 'posts.text AS post_text
+                  t.id AS thread_id,
+                  t.title AS thread_title,
+                  t.admins_only AS thread_admins_only,
+                  p.id AS post_id,
+                  p.timestamp AS post_timestamp,
+                  p.text AS post_text
                 FROM
-                  ' . $this->prefix . 'posts,
-                  ' . $this->prefix . 'threads
+                  ' . $this->prefix . 'posts p,
+                  ' . $this->prefix . 'threads t
                 WHERE
-                  ' . $this->prefix . 'posts.user_id = ' . $pUserId . ' AND
-                  ' . $this->prefix . 'posts.thread_id = ' . $this->prefix . 'threads.id
+                  p.user_id = :user_id AND
+                  p.thread_id = t.id
                 ORDER BY
-                  ' . $this->prefix . 'posts.timestamp DESC;';
-            return $this->db->query($sql)->fetchAll();
-        }
-        catch(Exception $ex) {
+                  p.timestamp DESC';
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([':user_id' => $pUserId]);
+            return $stmt->fetchAll();
+        } catch (Exception $ex) {
             error(500, 'Query could not be executed', $ex);
         }
     }
