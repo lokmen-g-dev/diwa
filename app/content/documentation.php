@@ -3,11 +3,11 @@ session_start();
 
 // Get content of directory
 try {
-    $rootPath = ROOT_PATH . '/../docs/';
+    $rootPath = realpath(ROOT_PATH . '/../docs/');
     $path = './';
     if (isset($_GET['path']) && !empty($_GET['path'])) {
-        $sanitizedPath = realpath($rootPath . $_GET['path']);
-        if (strpos($sanitizedPath, realpath($rootPath)) === 0 && file_exists($sanitizedPath)) {
+        $sanitizedPath = realpath($rootPath . DIRECTORY_SEPARATOR . $_GET['path']);
+        if ($sanitizedPath !== false && strpos($sanitizedPath, $rootPath) === 0 && file_exists($sanitizedPath)) {
             $path = $_GET['path'];
         }
     }
@@ -17,16 +17,16 @@ try {
         $path .= '/';
     }
 
-    $globList = glob($rootPath . $path . '*');
+    $globList = glob($rootPath . DIRECTORY_SEPARATOR . $path . '*');
 } catch (Exception $ex) {
     error(500, 'Could not get content of directory', $ex);
 }
+
 ?>
 
 <div class="row">
     <div class="col-lg-3">
-        <h1>Documentation</h1>
-        <hr/>
+        <h1>Documentation</h1><hr/>
         <ul class="list-group">
             <?php
             if ($path !== './') {
@@ -54,7 +54,7 @@ try {
         if (isset($_GET['file']) && !empty($_GET['file'])) {
             $sanitizedFile = basename($_GET['file']);
             echo '<h1>' . htmlspecialchars($sanitizedFile, ENT_QUOTES, 'UTF-8') . '</h1><hr/>';
-            $filePath = $rootPath . $path . $sanitizedFile;
+            $filePath = $rootPath . DIRECTORY_SEPARATOR . $path . $sanitizedFile;
             if (file_exists($filePath)) {
                 $fileExtension = strtolower(pathinfo($sanitizedFile, PATHINFO_EXTENSION));
                 $validMarkdownExtensions = array('md', 'markdown');
