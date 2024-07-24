@@ -1,17 +1,17 @@
 <?php
 try {
-    $file = __DIR__ . '/files/' . $_GET['file'];
+    // Sanitize the file parameter to prevent directory traversal attacks
+    $fileName = basename($_GET['file']);
+    $file = __DIR__ . '/files/' . $fileName;
 
     if (!file_exists($file)) {
         header('HTTP/1.1 404 Not Found');
         exit;
     }
 
-    if(function_exists('mime_content_type')) {
+    if (function_exists('mime_content_type')) {
         $mimeType = mime_content_type($file);
-    }
-    else {
-
+    } else {
         $mimeTypes = array(
             'txt' => 'text/plain',
             'md' => 'text/plain',
@@ -39,7 +39,7 @@ try {
             'zip' => 'application/zip',
             'rar' => 'application/x-rar-compressed',
             'cab' => 'application/vnd.ms-cab-compressed',
-            'gz' => ' application/gzip ',
+            'gz' => 'application/gzip',
             'tar' => 'application/x-tar',
             'qt' => 'video/quicktime',
             'mov' => 'video/quicktime',
@@ -49,10 +49,10 @@ try {
             'eps' => 'application/postscript',
             'ps' => 'application/postscript',
             'doc' => 'application/msword',
-            'docx' => 'application/vnd.openxmlformats-officedocument. wordprocessingml.documen',
+            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'rtf' => 'application/rtf',
             'xls' => 'application/vnd.ms-excel',
-            'xlsx' => 'application/vnd.openxmlformats-officedocument. spreadsheetml.sheet',
+            'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'ppt' => 'application/vnd.ms-powerpoint',
             'odt' => 'application/vnd.oasis.opendocument.text',
             'ods' => 'application/vnd.oasis.opendocument.spreadsheet',
@@ -79,12 +79,13 @@ try {
             'mpa' => 'audio/mpeg',
             'mpeg' => 'video/mpeg',
             'mpg' => 'audio/mpeg',
-            'py' => 'text/x-script.phyton',
+            'py' => 'text/x-script.python',
             'tgz' => 'application/gnutar',
             'wav' => 'audio/wav',
         );
-        $fileExtension = substr($file, strrpos($file, '.') + 1);
-        if(false !== $fileExtension && !empty($fileExtension) && isset($mimeTypes[$fileExtension])) {
+
+        $fileExtension = pathinfo($file, PATHINFO_EXTENSION);
+        if (!empty($fileExtension) && isset($mimeTypes[$fileExtension])) {
             $mimeType = $mimeTypes[$fileExtension];
         } else {
             $mimeType = 'application/octet-stream';
@@ -92,10 +93,10 @@ try {
     }
 
     header('Content-Type: ' . $mimeType);
-    header('Content-Disposition: attachment; filename="' . basename($file) . '"');
+    header('Content-Disposition: attachment; filename="' . $fileName . '"');
     readfile($file);
-}
-catch(Exception $ex) {
-    header('HTTP/1.1 500  Internal Server Error');
+} catch (Exception $ex) {
+    header('HTTP/1.1 500 Internal Server Error');
     exit;
 }
+?>
